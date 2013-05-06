@@ -18,7 +18,7 @@ type JobCallback func(*Job) error
 type Worker struct {
   Interval int // in time.Duration
 
-  funcs  map[string]JobFunc
+  funcs map[string]JobFunc
   queues []*Queue
   // events *Events
 
@@ -28,8 +28,8 @@ type Worker struct {
 func NewWorker(cli *Client, queues []string, interval int) {
   w := &Worker{
     Interval: interval,
-    funcs:    make(map[string]JobFunc),
-    // events:   c.Events(),
+    funcs: make(map[string]JobFunc),
+    // events: c.Events(),
     cli: cli,
   }
 
@@ -39,31 +39,70 @@ func NewWorker(cli *Client, queues []string, interval int) {
 }
 
 func (w *Worker) Start() error {
-  func(q *Queue) {
-  	for {
-			jobs, err := q.Pop(1)
-			if err != nil {
-				log.Println(err)
-				// report to some error channel?
-			} else {
-				if len(jobs) > 0 {
-					err := w.funcs[jobs[0].Klass](jobs[0])
-					if err != nil {
-						// TODO: probably do something with this
-						jobs[0].Fail("fail", err.Error())
-					} else {
-						jobs[0].Complete()
-						log.Printf("===job:%+v", jobs[0])
-					}
-				} else {
-					//log.Println("should never happend")
-					time.Sleep(time.Duration(w.Interval))
-				}
-			}
-		}
-	}(w.queue)
+  heartbeatc := w.cli.GetConfig("heartbeat")
+  heartbeat, err := strconv.ParseInt(heartbeatc, 10, 64)
+  if err != nil {
+    heartbeat = 60
+  }
 
-	return nil
+  // var wg sync.WaitGroup
+  // ch, err := w.events.Listen()
+  // if err != nil {
+  // return err
+  // }
+
+  // go func() {
+  // wg.Add(1)
+  // defer wg.Done()
+
+  // for {
+  // if val, ok := <-ch; ok {
+  // switch v := (val).(type) {
+  // case redis.Message:
+  // // v.Channel, v.Data
+
+  // case redis.Subscription:
+  // // fmt.Printf("WATCH: %s: %s %d\n", v.Channel, v.Kind, v.Count)
+  // case error:
+  // return
+  // }
+  // } else {
+  // return
+  // }
+  // }
+  // }()
+
+  for {
+    for _, q := range w.queues {
+      jobs, err := q.Pop(1)
+      if err != nil {
+        // report to some error channel?
+      } else {
+        go func() {
+          // TODO: heartbeating. should i make workers do this?
+          exitHeartbeat := false
+          go func() {
+            time.Sleep(time.Duration(heartbeat) * time.Second)
+            if exitHeartbeat {
+              return
+            }
+            jobs[0].Heartbeat()
+          }()
+
+          err := w.funcs[jobs[0].Jid](jobs[0])
+          if err != nil {
+            // TODO: probably do something with this
+            jobs[0].Fail("fail", err.Error())
+          } else {
+            jobs[0].Complete()
+          }
+
+          exitHeartbeat = true
+        }()
+      }
+    }
+
+    time.Sleep(time.Duration(w.Interval))
   }
 
   // wg.Wait()

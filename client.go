@@ -184,18 +184,23 @@ func (c *Client) Tagged(tag string, start, count int) (*TaggedReply, error) {
 
 // config(0, 'get', [option])
 func (c *Client) GetConfig(option string) string {
-  args := []interface{}{0}
-  if option != "" {
-    args = append(args, option)
-  }
-
-  str, _ := redis.String(c.Do("get", args...))
-  return str
+  intf, err := c.Do("config", 0, "get", option)
+  if err != nil {
+		fmt.Println("getconfig, redis.String fail. err:", err)
+	}
+	str, err := redis.String(intf, err)
+	if err != nil {
+		fmt.Println("getconfig, redis.String fail. str:", str, " err:", err)
+	}
+	return str
 }
 
 // config(0, 'set', option, value)
 func (c *Client) SetConfig(option string, value interface{}) {
-  c.Do("set", option, value)
+  intf, err := c.Do("config", 0, "set", option, value)
+  if err != nil {
+		fmt.Println("setconfig, c.Do fail. interface:", intf, " err:", err)
+	}
 }
 
 // config(0, 'unset', [option])

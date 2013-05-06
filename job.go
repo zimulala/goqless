@@ -71,8 +71,8 @@ func (j *Job) SetClient(cli *Client) {
 }
 
 // Move this from it's current queue into another
-func (j *Job) Move() (string, error) {
-  return redis.String(j.cli.Do("put", 1, j.Queue, j.Jid, j.Klass, marshal(j.Data), timestamp(), 0))
+func (j *Job) Move(queueName string) (string, error) {
+  return redis.String(j.cli.Do("put", 1, queueName, j.Jid, j.Klass, marshal(j.Data), timestamp(), 0))
 }
 
 // Fail(0, id, worker, type, message, now, [data])
@@ -129,8 +129,8 @@ func (j *Job) Untag(tags ...interface{}) (string, error) {
 }
 
 // Retry(0, jid, queue, worker, now, [delay])
-func (j *Job) Retry(delay int) (string, error) {
-  return redis.String(j.cli.Do("retry", 0, j.Jid, j.Queue, j.Worker, delay))
+func (j *Job) Retry(delay int) (int, error) {
+  return redis.Int(j.cli.Do("retry", 0, j.Jid, j.Queue, j.Worker, delay))
 }
 
 // Depends(0, jid, 'on', [jid, [jid, [...]]])

@@ -4,6 +4,8 @@ import (
   "encoding/json"
   "fmt"
   "github.com/garyburd/redigo/redis"
+  "errors"
+  "strconv"
 )
 
 type TaggedReply struct {
@@ -183,16 +185,32 @@ func (c *Client) Tagged(tag string, start, count int) (*TaggedReply, error) {
 // }
 
 // config(0, 'get', [option])
-func (c *Client) GetConfig(option string) string {
-  intf, err := c.Do("config", 0, "get", option)
-  if err != nil {
-		fmt.Println("getconfig, redis.String fail. err:", err)
-	}
-	str, err := redis.String(intf, err)
+func (c *Client) GetConfig(option string) (string, error) {
+
+	interf, err := c.Do("config", 0, "get", option)
 	if err != nil {
-		fmt.Println("getconfig, redis.String fail. str:", str, " err:", err)
+		return "", err
 	}
-	return str
+
+	switch interf.(type) {
+	case []uint8:
+		contentStr, err := redis.String(interf, nil)
+		if err == nil {
+			return contentStr, nil
+		}
+		return "", err
+	case int64:
+		contentInt64, err := redis.Int64(interf, nil)
+		if err == nil {
+			return strconv.Itoa(int(contentInt64)), nil
+		}
+		return "", err
+	default:
+		err := errors.New("The redis return type is not []uint8 or int64")
+		return "", err
+	}
+
+	return "", err
 }
 
 // config(0, 'set', option, value)

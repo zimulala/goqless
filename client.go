@@ -192,25 +192,24 @@ func (c *Client) GetConfig(option string) (string, error) {
 		return "", err
 	}
 
+	var contentStr string
 	switch interf.(type) {
 	case []uint8:
-		contentStr, err := redis.String(interf, nil)
-		if err == nil {
-			return contentStr, nil
-		}
-		return "", err
+		contentStr, err = redis.String(interf, nil)
 	case int64:
-		contentInt64, err := redis.Int64(interf, nil)
+		var contentInt64 int64
+		contentInt64, err = redis.Int64(interf, nil)
 		if err == nil {
-			return strconv.Itoa(int(contentInt64)), nil
+			contentStr = strconv.Itoa(int(contentInt64))
 		}
-		return "", err
 	default:
-		err := errors.New("The redis return type is not []uint8 or int64")
+		err = errors.New("The redis return type is not []uint8 or int64")
+	}
+	if err != nil {
 		return "", err
 	}
 
-	return "", err
+	return contentStr, err
 }
 
 // config(0, 'set', option, value)

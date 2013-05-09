@@ -43,7 +43,7 @@ func (w *Worker) Start() error {
 
 	func(q *Queue) {
 		heartbeatStr, err := w.cli.GetConfig("heartbeat")
-		heartbeat, err := strconv.Atoi(heartbeatStr)
+		heartbeat, err := strconv.Atoi(heartbeatStr) 
 		if err != nil {
 			heartbeat = 60
 		}

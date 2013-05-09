@@ -84,7 +84,6 @@ func (w *Worker) Start() error {
 						jobs[0].Complete()
 						clientLock.Unlock()
 						done <- true
-						//log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
 					time.Sleep(time.Duration(w.Interval))

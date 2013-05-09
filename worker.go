@@ -39,26 +39,57 @@ func NewWorker(cli *Client, queues []string, interval int) {
 }
 
 func (w *Worker) Start() error {
-  // log.Println("worker Start")
+	// log.Println("worker Start")
+	var clientLock sync.Mutex
 
 	func(q *Queue) {
+		heartbeatStr, err := w.cli.GetConfig("heartbeat")
+		heartbeat, err := strconv.Atoi(heartbeatStr)
+		log.Println("heartbeatStr:", heartbeat)
+		if err != nil {
+			heartbeat = 60
+		}
 		for {
+			clientLock.Lock()
 			jobs, err := q.Pop(1)
+			clientLock.Unlock()
+
 			if err != nil {
 				log.Println(err)
 				// report to some error channel?
 			} else {
 				if len(jobs) > 0 {
+					done := make(chan bool)
+					go func(job *Job, done chan bool) {
+						tick := time.Tick(heartbeat * time.Second)
+						for {
+							select {
+							case <-done:
+								return
+							case <-tick:
+								clientLock.Lock()
+								job.Heartbeat()
+								clientLock.Unlock()
+								log.Println("heartbeat***", job.Jid)
+							}
+						}
+					}(jobs[0], done)
+
 					err := w.funcs[jobs[0].Klass](jobs[0])
 					if err != nil {
 						// TODO: probably do something with this
+						clientLock.Lock()
 						jobs[0].Fail("fail", err.Error())
+						clientLock.Unlock()
+						done <- false
 					} else {
+						clientLock.Lock()
 						jobs[0].Complete()
+						clientLock.Unlock()
+						done <- true
 						log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
-					//log.Println("should never happend")
 					time.Sleep(time.Duration(w.Interval))
 				}
 			}

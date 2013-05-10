@@ -38,13 +38,33 @@ func NewWorker(cli *Client, queues []string, interval int) {
   }
 }
 
-func(q *Queue) {
-  	heartbeatStr, err := w.cli.GetConfig("heartbeat")
+func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
+
+	tick := time.Tick(time.Duration(heartbeat-5) * time.Duration(time.Second))
+	for {
+		select {
+		case <-done:
+			return
+		case <-tick:
+			clientLock.Lock()
+			job.Heartbeat()
+			clientLock.Unlock()
+			log.Printf("heartbeat***%v,cli:%+v", job.Jid, job.cli)
+		}
+	}
+}
+
+func (w *Worker) Start() error {
+	// log.Println("worker Start")
+	var clientLock sync.Mutex
+
+	func(q *Queue) {
+		heartbeatStr, err := w.cli.GetConfig("heartbeat")
 		heartbeat, err := strconv.Atoi(heartbeatStr)
+		log.Println("heartbeatStr:", heartbeat)
 		if err != nil {
 			heartbeat = 60
 		}
-
 		for {
 			clientLock.Lock()
 			jobs, err := q.Pop(1)
@@ -56,19 +76,7 @@ func(q *Queue) {
 			} else {
 				if len(jobs) > 0 {
 					done := make(chan bool)
-					go func(job *Job, done chan bool) {
-						tick := time.Tick(time.Duration(heartbeat-5) * time.Duration(time.Second))
-						for {
-							select {
-							case <-done:
-								return
-							case <-tick:
-								clientLock.Lock()
-								job.Heartbeat()
-								clientLock.Unlock()
-							}
-						}
-					}(jobs[0], done)
+					go haertbeatStart(jobs[0], done, heartbeat, clientLock)
 
 					err := w.funcs[jobs[0].Klass](jobs[0])
 					if err != nil {
@@ -82,7 +90,7 @@ func(q *Queue) {
 						jobs[0].Complete()
 						clientLock.Unlock()
 						done <- true
-						//log.Printf("===job:%+v", jobs[0])
+						log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
 					time.Sleep(time.Duration(w.Interval))

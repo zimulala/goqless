@@ -38,15 +38,13 @@ func NewWorker(cli *Client, queues []string, interval int) {
   }
 }
 
-func (w *Worker) Start() error {
-	var clientLock sync.Mutex
-
-	func(q *Queue) {
-		heartbeatStr, err := w.cli.GetConfig("heartbeat")
-		heartbeat, err := strconv.Atoi(heartbeatStr) 
+func(q *Queue) {
+  	heartbeatStr, err := w.cli.GetConfig("heartbeat")
+		heartbeat, err := strconv.Atoi(heartbeatStr)
 		if err != nil {
 			heartbeat = 60
 		}
+
 		for {
 			clientLock.Lock()
 			jobs, err := q.Pop(1)
@@ -59,7 +57,7 @@ func (w *Worker) Start() error {
 				if len(jobs) > 0 {
 					done := make(chan bool)
 					go func(job *Job, done chan bool) {
-						tick := time.Tick(heartbeat * time.Second)
+						tick := time.Tick(time.Duration(heartbeat-5) * time.Duration(time.Second))
 						for {
 							select {
 							case <-done:
@@ -84,6 +82,7 @@ func (w *Worker) Start() error {
 						jobs[0].Complete()
 						clientLock.Unlock()
 						done <- true
+						//log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
 					time.Sleep(time.Duration(w.Interval))

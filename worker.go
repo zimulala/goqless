@@ -6,10 +6,11 @@ import (
   // "encoding/json"
   "fmt"
   // "github.com/garyburd/redigo/redis"
-
+  "log"
   "reflect"
   "strconv"
   "time"
+  "sync"
 )
 
 type JobFunc func(*Job) error
@@ -25,7 +26,7 @@ type Worker struct {
   cli *Client
 }
 
-func NewWorker(cli *Client, queues []string, interval int) {
+func NewWorker(cli *Client, queues []string, interval int) *Worker {
   w := &Worker{
     Interval: interval,
     funcs: make(map[string]JobFunc),
@@ -33,9 +34,9 @@ func NewWorker(cli *Client, queues []string, interval int) {
     cli: cli,
   }
 
-  for _, q := range queues {
-    w.queues = append(w.queues, cli.Queue(q))
-  }
+  w.queue = cli.Queue(queueName)
+
+  return w
 }
 
 func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {

@@ -26,7 +26,7 @@ type Worker struct {
   cli *Client
 }
 
-func NewWorker(cli *Client, queues []string, interval int) *Worker {
+func NewWorker(cli *Client, queueName string, interval int) *Worker {
   w := &Worker{
     Interval: interval,
     funcs: make(map[string]JobFunc),

@@ -20,7 +20,7 @@ type Worker struct {
   Interval int // in time.Duration
 
   funcs map[string]JobFunc
-  queues []*Queue
+  queue *Queue
   // events *Events
 
   cli *Client

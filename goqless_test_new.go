@@ -1,7 +1,7 @@
-package main
+package goqless
 
 import (
-  "github.com/kdar/goqless"
+        //"github.com/zimulala/goqless"
 	"log"
 	"strconv"
 	"time"

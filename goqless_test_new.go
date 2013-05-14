@@ -21,7 +21,7 @@ const (
 	original_queue = "original_queue"
 )
 
-var clientCh = make(chan *goqless.Client)
+var clientCh = make(chan *Client)
 
 type dataWorker struct {
 }
@@ -29,7 +29,7 @@ type dataWorker struct {
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 
-	client, err := goqless.Dial("127.0.0.1", "6379")
+	client, err := Dial("127.0.0.1", "6379")
 	if err != nil {
 		log.Println("Dial err:", err)
 	}
@@ -45,7 +45,7 @@ func main() {
 	select {}
 }
 
-func initOriginalQueue(queue *goqless.Queue) (err error) {
+func initOriginalQueue(queue *Queue) (err error) {
 
 	var klass string
 	depends := []string{}
@@ -63,10 +63,10 @@ func initOriginalQueue(queue *goqless.Queue) (err error) {
 	return
 }
 
-func batchJobs(queue *goqless.Queue) (err error) {
+func batchJobs(queue *Queue) (err error) {
 
 	queueCount := int(jobs_count / queues_capacity)
-	// go goqless.ChannelDialClient("127.0.0.1", "6379", clientCh)
+	// go ChannelDialClient("127.0.0.1", "6379", clientCh)
 
 	for i := 0; i < queueCount; i++ {
 		handlePerQueue(queue, i)
@@ -75,8 +75,8 @@ func batchJobs(queue *goqless.Queue) (err error) {
 	return
 }
 
-func handlePerQueue(queue *goqless.Queue, num int) {
-	client, err := goqless.Dial("127.0.0.1", "6379")
+func handlePerQueue(queue *Queue, num int) {
+	client, err := Dial("127.0.0.1", "6379")
 	if err != nil {
 		log.Println("Dial err:", err)
 	}
@@ -107,7 +107,7 @@ func handlePerQueue(queue *goqless.Queue, num int) {
 	startWorkers(queueStr)
 }
 
-func testJobMoveFailRetry(QueueNo int, job *goqless.Job) {
+func testJobMoveFailRetry(QueueNo int, job *Job) {
 
 	//Move to self.queue
 	if test_move == QueueNo {
@@ -142,7 +142,7 @@ func startWorkers(queueStr string) (err error) {
 	log.Println("worker queues", queueStr)
 
 	startWorker := func(queueStr string) {
-		client, err := goqless.Dial("127.0.0.1", "6379")
+		client, err := Dial("127.0.0.1", "6379")
 		if err != nil {
 			log.Println("Dial err:", err)
 		}
@@ -167,9 +167,9 @@ func startWorkers(queueStr string) (err error) {
 	return
 }
 
-func initWorker(cli *goqless.Client, queue string) (worker *goqless.Worker, err error) {
+func initWorker(cli *Client, queue string) (worker *Worker, err error) {
 
-	worker = goqless.NewWorker(cli, queue, interval)
+	worker = NewWorker(cli, queue, interval)
 	log.Printf("worker: %+v, p:%p", worker, worker)
 	dataW := &dataWorker{}
 	worker.AddService("klass", dataW)
@@ -177,7 +177,7 @@ func initWorker(cli *goqless.Client, queue string) (worker *goqless.Worker, err 
 	return
 }
 
-func (dataW *dataWorker) Add(job *goqless.Job) (err error) {
+func (dataW *dataWorker) Add(job *Job) (err error) {
 	job.Data = map[string]interface{}{"id": "Add"}
 	time.Sleep(190 * time.Second)
 	job.Data = map[string]interface{}{"id": "sleepEndAdd"}
@@ -185,7 +185,7 @@ func (dataW *dataWorker) Add(job *goqless.Job) (err error) {
 	return
 }
 
-func (dataW *dataWorker) Sub(job *goqless.Job) (err error) {
+func (dataW *dataWorker) Sub(job *Job) (err error) {
 	job.Data = map[string]interface{}{"id": "Sub"}
 	return
 }

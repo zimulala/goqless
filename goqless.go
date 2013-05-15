@@ -94,12 +94,12 @@ func ucfirst(s string) string {
 // marshals a value. if the value happens to be
 // a string or []byte, just return it.
 func marshal(i interface{}) []byte {
-  switch v := i.(type) {
-  case []byte:
-    return v
-  case string:
-    return []byte(v)
-  }
+  //switch v := i.(type) {
+  //case []byte:
+  //  return v
+  //case string:
+  //  return []byte(v)
+  //}
 
   byts, err := json.Marshal(i)
   if err != nil {

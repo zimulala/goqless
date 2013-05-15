@@ -121,9 +121,14 @@ func (w *Worker) AddService(name string, rcvr interface{}) error {
     method := typ.Method(i)
     w.AddFunc(name+"."+method.Name, func(job *Job) error {
       ret := method.Func.Call([]reflect.Value{val, reflect.ValueOf(job)})
-      if err, ok := ret[1].Interface().(error); ok {
-        return err
-      }
+      if len(ret) > 0 {
+	if err, ok := ret[0].Interface().(error); ok {
+	   return err
+	  }
+	} else {
+	   errStr := "reflect len less than zero." + strconv.Itoa(len(ret))
+	   return errors.New(errStr)
+	}
 
       return nil
     })

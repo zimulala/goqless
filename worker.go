@@ -63,7 +63,7 @@ func (w *Worker) Start() error {
 	func(q *Queue) {
 		heartbeatStr, err := w.cli.GetConfig("heartbeat")
 		heartbeat, err := strconv.Atoi(heartbeatStr)
-		log.Println("heartbeatStr:", heartbeat)
+		//log.Println("heartbeatStr:", heartbeat)
 		if err != nil {
 			heartbeat = 60
 		}
@@ -92,7 +92,7 @@ func (w *Worker) Start() error {
 						jobs[0].Complete()
 						clientLock.Unlock()
 						done <- true
-						log.Printf("===job:%+v", jobs[0])
+						//log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
 					time.Sleep(time.Duration(w.Interval))

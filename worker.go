@@ -51,7 +51,6 @@ func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mut
 			clientLock.Lock()
 			job.Heartbeat()
 			clientLock.Unlock()
-			log.Printf("heartbeat***%v,cli:%+v", job.Jid, job.cli)
 		}
 	}
 }
@@ -84,7 +83,6 @@ func (w *Worker) Start() error {
 					if err != nil {
 						// TODO: probably do something with this
 						clientLock.Lock()
-						jobs[0].Fail("fail", err.Error())
 						clientLock.Unlock()
 						done <- false
 					} else {
@@ -92,7 +90,6 @@ func (w *Worker) Start() error {
 						jobs[0].Complete()
 						clientLock.Unlock()
 						done <- true
-						log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
 					time.Sleep(time.Duration(w.Interval))

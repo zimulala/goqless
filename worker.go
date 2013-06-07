@@ -3,41 +3,41 @@
 package goqless
 
 import (
-  // "encoding/json"
-  "fmt"
-  // "github.com/garyburd/redigo/redis"
-  "log"
-  "errors"
-  "reflect"
-  "strconv"
-  "time"
-  "sync"
+	// "encoding/json"
+	"fmt"
+	// "github.com/garyburd/redigo/redis"
+	"errors"
+	"log"
+	"reflect"
+	"strconv"
+	"sync"
+	"time"
 )
 
 type JobFunc func(*Job) error
 type JobCallback func(*Job) error
 
 type Worker struct {
-  Interval int // in time.Duration
+	Interval int // in time.Duration
 
-  funcs map[string]JobFunc
-  queue *Queue
-  // events *Events
+	funcs map[string]JobFunc
+	queue *Queue
+	// events *Events
 
-  cli *Client
+	cli *Client
 }
 
 func NewWorker(cli *Client, queueName string, interval int) *Worker {
-  w := &Worker{
-    Interval: interval,
-    funcs: make(map[string]JobFunc),
-    // events: c.Events(),
-    cli: cli,
-  }
+	w := &Worker{
+		Interval: interval,
+		funcs:    make(map[string]JobFunc),
+		// events: c.Events(),
+		cli: cli,
+	}
 
-  w.queue = cli.Queue(queueName)
+	w.queue = cli.Queue(queueName)
 
-  return w
+	return w
 }
 
 func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
@@ -60,7 +60,7 @@ func (w *Worker) Start() error {
 	// log.Println("worker Start")
 	var clientLock sync.Mutex
 
-	func(q *Queue) {
+	err := func(q *Queue) error {
 		heartbeatStr, err := w.cli.GetConfig("heartbeat")
 		heartbeat, err := strconv.Atoi(heartbeatStr)
 		//log.Println("heartbeatStr:", heartbeat)
@@ -73,8 +73,7 @@ func (w *Worker) Start() error {
 			clientLock.Unlock()
 
 			if err != nil {
-				log.Println(err)
-				// report to some error channel?
+				return err
 			} else {
 				if len(jobs) > 0 {
 					done := make(chan bool)
@@ -101,39 +100,39 @@ func (w *Worker) Start() error {
 		}
 	}(w.queue)
 
-	return nil
+	return err
 }
 
 func (w *Worker) AddFunc(name string, f JobFunc) error {
-  if _, ok := w.funcs[name]; ok {
-    return fmt.Errorf("function \"%s\" already exists", name)
-  }
+	if _, ok := w.funcs[name]; ok {
+		return fmt.Errorf("function \"%s\" already exists", name)
+	}
 
-  w.funcs[name] = f
-  return nil
+	w.funcs[name] = f
+	return nil
 }
 
 // Adds all the methods in the passed interface as job functions.
 // Job names are in the form of: name.methodname
 func (w *Worker) AddService(name string, rcvr interface{}) error {
-  typ := reflect.TypeOf(rcvr)
-  val := reflect.ValueOf(rcvr)
-  for i := 0; i < typ.NumMethod(); i++ {
-    method := typ.Method(i)
-    w.AddFunc(name+"."+method.Name, func(job *Job) error {
-      ret := method.Func.Call([]reflect.Value{val, reflect.ValueOf(job)})
-      if len(ret) > 0 {
-	if err, ok := ret[0].Interface().(error); ok {
-	   return err
-	  }
-	} else {
-	   errStr := "reflect len less than zero." + strconv.Itoa(len(ret))
-	   return errors.New(errStr)
+	typ := reflect.TypeOf(rcvr)
+	val := reflect.ValueOf(rcvr)
+	for i := 0; i < typ.NumMethod(); i++ {
+		method := typ.Method(i)
+		w.AddFunc(name+"."+method.Name, func(job *Job) error {
+			ret := method.Func.Call([]reflect.Value{val, reflect.ValueOf(job)})
+			if len(ret) > 0 {
+				if err, ok := ret[0].Interface().(error); ok {
+					return err
+				}
+			} else {
+				errStr := "reflect len less than zero." + strconv.Itoa(len(ret))
+				return errors.New(errStr)
+			}
+
+			return nil
+		})
 	}
 
-      return nil
-    })
-  }
-
-  return nil
+	return nil
 }

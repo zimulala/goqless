@@ -41,8 +41,7 @@ func NewWorker(cli *Client, queueName string, interval int) *Worker {
 }
 
 func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
-
-	tick := time.Tick(time.Duration(heartbeat-5) * time.Duration(time.Second))
+	tick := time.Tick(time.Duration(heartbeat) * time.Duration(time.Second))
 	for {
 		select {
 		case <-done:
@@ -94,7 +93,7 @@ func (w *Worker) Start() error {
 						//log.Printf("===job:%+v", jobs[0])
 					}
 				} else {
-					time.Sleep(time.Duration(w.Interval))
+					time.Sleep(time.Duration(w.Interval) * time.Millisecond)
 				}
 			}
 		}

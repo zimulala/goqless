@@ -40,7 +40,7 @@ func NewWorker(cli *Client, queueName string, interval int) *Worker {
 	return w
 }
 
-func haertbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
+func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
 	tick := time.Tick(time.Duration(heartbeat) * time.Duration(time.Second))
 	for {
 		select {
@@ -76,9 +76,13 @@ func (w *Worker) Start() error {
 			} else {
 				if len(jobs) > 0 {
 					done := make(chan bool)
-					go haertbeatStart(jobs[0], done, heartbeat, clientLock)
-
-					err := w.funcs[jobs[0].Klass](jobs[0])
+					//todo: using seprate connection to send heartbeat
+					go heartbeatStart(jobs[0], done, heartbeat, clientLock)
+					f, ok := w.funcs[jobs[0].Klass]
+					if !ok { //we got a job that not belongs to us
+						continue
+					}
+					err := f(jobs[0])
 					if err != nil {
 						// TODO: probably do something with this
 						clientLock.Lock()

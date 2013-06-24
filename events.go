@@ -39,7 +39,7 @@ func (e *Events) Listen() (chan interface{}, error) {
 		}
 	}()
 
-	for _, i := range []string{"canceled", "completed", "failed", "popped", "stalled", "put", "track", "untrack"} {
+	for _, i := range []string{"ql:log", "canceled", "completed", "failed", "popped", "stalled", "put", "track", "untrack"} {
 		err := e.psc.Subscribe(i)
 		if err != nil {
 			close(e.ch)

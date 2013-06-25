@@ -105,7 +105,7 @@ func (q *Queue) Pop(count int) ([]*Job, error) {
 		count = 1
 	}
 
-	reply, err := redis.Values(q.cli.Do("pop", count, q.Name, workerName(), 1, timestamp()))
+	reply, err := redis.Values(q.cli.Do("pop", 1, q.Name, workerName(), count, timestamp()))
 	if err != nil {
 		return nil, err
 	}

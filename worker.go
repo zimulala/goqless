@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
 type JobFunc func(*Job) error
 type JobCallback func(*Job) error
 
@@ -59,45 +63,52 @@ func (w *Worker) Start() error {
 	// log.Println("worker Start")
 	var clientLock sync.Mutex
 
-	err := func(q *Queue) error {
-		heartbeatStr, err := w.cli.GetConfig("heartbeat")
-		heartbeat, err := strconv.Atoi(heartbeatStr)
-		//log.Println("heartbeatStr:", heartbeat)
-		if err != nil {
-			heartbeat = 60
-		}
+	heartbeatStr, err := w.cli.GetConfig("heartbeat")
+	heartbeat, err := strconv.Atoi(heartbeatStr)
+	//log.Println("heartbeatStr:", heartbeat)
+	if err != nil {
+		heartbeat = 60
+		log.Println(err)
+	}
+
+	err = func(q *Queue) error {
 		for {
 			clientLock.Lock()
-			jobs, err := q.Pop(1)
+			jobs, err := q.Pop(2) //we may pop more if fast enough
 			clientLock.Unlock()
 
 			if err != nil {
+				log.Println(err)
 				return err
-			} else {
-				if len(jobs) > 0 {
-					done := make(chan bool)
-					//todo: using seprate connection to send heartbeat
-					go heartbeatStart(jobs[0], done, heartbeat, clientLock)
-					f, ok := w.funcs[jobs[0].Klass]
-					if !ok { //we got a job that not belongs to us
-						continue
-					}
-					err := f(jobs[0])
-					if err != nil {
-						// TODO: probably do something with this
-						clientLock.Lock()
-						jobs[0].Fail("fail", err.Error())
-						clientLock.Unlock()
-						done <- false
-					} else {
-						clientLock.Lock()
-						jobs[0].Complete()
-						clientLock.Unlock()
-						done <- true
-						//log.Printf("===job:%+v", jobs[0])
-					}
+			}
+
+			if len(jobs) == 0 {
+				time.Sleep(time.Duration(w.Interval) * time.Millisecond)
+				continue
+			}
+
+			for i := 0; i < len(jobs); i++ {
+				done := make(chan bool)
+				//todo: using seprate connection to send heartbeat
+				go heartbeatStart(jobs[i], done, heartbeat, clientLock)
+				f, ok := w.funcs[jobs[i].Klass]
+				if !ok { //we got a job that not belongs to us
+					continue
+				}
+
+				err := f(jobs[i])
+				if err != nil {
+					// TODO: probably do something with this
+					clientLock.Lock()
+					jobs[i].Fail("fail", err.Error())
+					clientLock.Unlock()
+					done <- false
 				} else {
-					time.Sleep(time.Duration(w.Interval) * time.Millisecond)
+					clientLock.Lock()
+					jobs[i].Complete()
+					clientLock.Unlock()
+					done <- true
+					//log.Printf("===job:%+v", jobs[0])
 				}
 			}
 		}

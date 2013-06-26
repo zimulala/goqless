@@ -54,7 +54,7 @@ func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mut
 			clientLock.Lock()
 			job.Heartbeat()
 			clientLock.Unlock()
-			log.Printf("warning, slow, heartbeat***%v, %v", job.Jid, job.Data)
+			log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v", job.Jid, job.Queue)
 		}
 	}
 }

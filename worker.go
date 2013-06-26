@@ -114,6 +114,7 @@ func (w *Worker) Start() error {
 				}
 			}
 		}
+		return nil
 	}(w.queue)
 
 	return err

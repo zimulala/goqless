@@ -76,7 +76,7 @@ func (w *Worker) Start() error {
 	err = func(q *Queue) error {
 		for {
 			clientLock.Lock()
-			jobs, err := q.Pop(2) //we may pop more if fast enough
+			jobs, err := q.Pop(1) //we may pop more if fast enough
 			clientLock.Unlock()
 
 			if err != nil {

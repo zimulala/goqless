@@ -45,12 +45,13 @@ func NewWorker(cli *Client, queueName string, interval int) *Worker {
 }
 
 func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
-	tick := time.Tick(time.Duration(heartbeat) * time.Duration(time.Second))
+	tick := time.NewTicker(time.Duration(heartbeat) * time.Duration(time.Second))
 	for {
 		select {
 		case <-done:
+			tick.Stop()
 			return
-		case <-tick:
+		case <-tick.C:
 			clientLock.Lock()
 			job.Heartbeat()
 			clientLock.Unlock()
@@ -95,6 +96,7 @@ func (w *Worker) Start() error {
 				go heartbeatStart(jobs[i], done, heartbeat, clientLock)
 				f, ok := w.funcs[jobs[i].Klass]
 				if !ok { //we got a job that not belongs to us
+					log.Fatalln("got a message not belongs to us, queue", q.Name, jobs[i])
 					continue
 				}
 

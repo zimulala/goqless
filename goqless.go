@@ -28,6 +28,21 @@ import (
 // represents a string slice with special json unmarshalling
 type StringSlice []string
 
+var workerNameStr string
+
+func init() {
+	hn, err := os.Hostname()
+	if err != nil {
+		hn = os.Getenv("HOSTNAME")
+	}
+
+	if hn == "" {
+		hn = "localhost"
+	}
+
+	workerNameStr = fmt.Sprintf("%s-%d", hn, os.Getpid())
+}
+
 func (s *StringSlice) UnmarshalJSON(data []byte) error {
 	// because tables and arrays are equal in LUA,
 	// an empty array would be presented as "{}".
@@ -70,16 +85,7 @@ func timestamp() int64 {
 
 // returns a worker name for this machine/process
 func workerName() string {
-	hn, err := os.Hostname()
-	if err != nil {
-		hn = os.Getenv("HOSTNAME")
-	}
-
-	if hn == "" {
-		hn = "localhost"
-	}
-
-	return fmt.Sprintf("%s-%d", hn, os.Getpid())
+	return workerNameStr
 }
 
 // makes the first character of a string upper case

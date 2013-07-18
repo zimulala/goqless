@@ -10,7 +10,9 @@ import (
 	"github.com/garyburd/redigo/redis"
 	mrand "math/rand"
 	"os"
+	"osext"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -41,6 +43,18 @@ func init() {
 	}
 
 	workerNameStr = fmt.Sprintf("%s-%d", hn, os.Getpid())
+}
+
+func GetCurrentDir() (string, error) {
+	dir, err := osext.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	dir = string(dir[:len(dir)-1])
+	pos := strings.LastIndex(dir, "/")
+	dir = string(dir[:pos])
+	return dir, nil
 }
 
 func (s *StringSlice) UnmarshalJSON(data []byte) error {
@@ -74,7 +88,9 @@ func generateJID() string {
 		}
 	}
 
-	hasher.Write(uuid)
+	hasher.Write([]byte(workerNameStr))
+	hasher.Write([]byte(uuid))
+	hasher.Write([]byte(time.Now().String()))
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 

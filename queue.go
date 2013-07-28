@@ -29,18 +29,23 @@ func (q *Queue) SetClient(cli *Client) {
 }
 
 // Jobs(0, ('stalled' | 'running' | 'scheduled' | 'depends' | 'recurring'), now, queue, [offset, [count]])
-func (q *Queue) Jobs(state string, start, count int) ([]string, error) {
-  reply, err := redis.Values(q.cli.Do("jobs", 0, state, timestamp(), q.Name))
-  if err != nil {
-    return nil, err
-  }
+func (q *Queue) Jobs(state string, start, count int) (ret []string, err error) {
+  reply := []interface{}{}
+  if state == "complete" {
+		reply, err = redis.Values(q.cli.Do("jobs", 0, state))
 
-  ret := []string{}
-  for _, val := range reply {
-    s, _ := redis.String(val, err)
-    ret = append(ret, s)
-  }
-  return ret, err
+	} else {
+		reply, err = redis.Values(q.cli.Do("jobs", 0, state, timestamp(), q.Name))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for _, val := range reply {
+		s, _ := redis.String(val, err)
+		ret = append(ret, s)
+	}
+	return ret, err
 }
 
 // Cancel all jobs in this queue

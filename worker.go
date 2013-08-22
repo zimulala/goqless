@@ -72,7 +72,7 @@ func (w *Worker) Start() error {
 		log.Println(err)
 	}
 
-	heartbeat -= 5
+	heartbeat /= 2
 
 	err = func(q *Queue) error {
 		for {

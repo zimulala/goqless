@@ -130,7 +130,7 @@ func (w *Worker) Start() error {
 					done <- true
 					if err != nil {
 						log.Printf("complete job:%+v success:%v, error:%v",
-							jobs[i], success, err)
+							jobs[i].Jid, success, err)
 						return err
 					}
 					//log.Printf("===job:%+v", jobs[0])

@@ -97,6 +97,9 @@ func (w *Worker) Start() error {
 			}
 
 			for i := 0; i < len(jobs); i++ {
+				if len(jobs[i].History) > 2 {
+					log.Printf("warning, multiple processed exist %+v\n", jobs[i])
+				}
 				done := make(chan bool)
 				//todo: using seprate connection to send heartbeat
 				go heartbeatStart(jobs[i], done, heartbeat, clientLock)

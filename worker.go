@@ -53,9 +53,15 @@ func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mut
 			return
 		case <-tick.C:
 			clientLock.Lock()
-			job.Heartbeat()
+			success, err := job.Heartbeat()
 			clientLock.Unlock()
-			log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v", job.Jid, job.Queue)
+			if err != nil {
+				log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v, success:%v, error:%v",
+					job.Jid, job.Queue, success, err)
+			} else {
+				log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v, success:%v",
+					job.Jid, job.Queue, success)
+			}
 		}
 	}
 }
@@ -96,6 +102,7 @@ func (w *Worker) Start() error {
 				go heartbeatStart(jobs[i], done, heartbeat, clientLock)
 				f, ok := w.funcs[jobs[i].Klass]
 				if !ok { //we got a job that not belongs to us
+					done <- false
 					log.Fatalln("got a message not belongs to us, queue", q.Name, jobs[i])
 					continue
 				}
@@ -103,15 +110,26 @@ func (w *Worker) Start() error {
 				err := f(jobs[i])
 				if err != nil {
 					// TODO: probably do something with this
+					log.Println("error: job failed, id", jobs[i].Jid, "queue", jobs[i].Queue, err.Error())
 					clientLock.Lock()
-					jobs[i].Fail("fail", err.Error())
+					success, err := jobs[i].Fail("fail", err.Error())
 					clientLock.Unlock()
 					done <- false
+					if err != nil {
+						log.Printf("fail job:%+v success:%v, error:%v",
+							jobs[i], success, err)
+						return err
+					}
 				} else {
 					clientLock.Lock()
-					jobs[i].Complete()
+					success, err := jobs[i].Complete()
 					clientLock.Unlock()
 					done <- true
+					if err != nil {
+						log.Printf("complete job:%+v success:%v, error:%v",
+							jobs[i], success, err)
+						return err
+					}
 					//log.Printf("===job:%+v", jobs[0])
 				}
 			}

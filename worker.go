@@ -120,7 +120,7 @@ func (w *Worker) Start() error {
 					done <- false
 					if err != nil {
 						log.Printf("fail job:%+v success:%v, error:%v",
-							jobs[i], success, err)
+							jobs[i].Jid, success, err)
 						return err
 					}
 				} else {

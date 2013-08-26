@@ -96,6 +96,11 @@ func (j *Job) Complete() (string, error) {
 	return redis.String(j.cli.Do("complete", 0, j.Jid, j.Worker, j.Queue, timestamp(), marshal(j.Data)))
 }
 
+//for big job, save memory in redis
+func (j *Job) CompleteWithNoData() (string, error) {
+	return redis.String(j.cli.Do("complete", 0, j.Jid, j.Worker, j.Queue, timestamp(), []byte(`{"finish":"yes"}`)))
+}
+
 // Cancel(0, id)
 // Cancels this job
 func (j *Job) Cancel() {

@@ -125,7 +125,7 @@ func (w *Worker) Start() error {
 					}
 				} else {
 					clientLock.Lock()
-					success, err := jobs[i].Complete()
+					success, err := jobs[i].CompleteWithNoData()
 					clientLock.Unlock()
 					done <- true
 					if err != nil {

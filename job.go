@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	JOBSTATES = []string{"stalled", "running", "scheduled", "depends", "recurring"}
+	JOBSTATES   = []string{"stalled", "running", "scheduled", "depends", "recurring"}
+	finishBytes = []byte(`{"finish":"yes"}`)
 )
 
 type History struct {
@@ -98,7 +99,7 @@ func (j *Job) Complete() (string, error) {
 
 //for big job, save memory in redis
 func (j *Job) CompleteWithNoData() (string, error) {
-	return redis.String(j.cli.Do("complete", 0, j.Jid, j.Worker, j.Queue, timestamp(), []byte(`{"finish":"yes"}`)))
+	return redis.String(j.cli.Do("complete", 0, j.Jid, j.Worker, j.Queue, timestamp(), finishBytes))
 }
 
 // Cancel(0, id)

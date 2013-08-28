@@ -166,18 +166,22 @@ func (w *Worker) Start() error {
 					}
 				} else {
 					w.Lock()
-					success, err := jobs[i].CompleteWithNoData()
+					status, err := jobs[i].CompleteWithNoData()
 					w.Unlock()
 					done <- true
 					if err != nil {
 						err = w.tryCompleteJob(jobs[i])
 						if err != nil {
-							log.Printf("fail job:%+v success:%v, error:%v",
-								jobs[i].Jid, success, err)
+							log.Printf("fail job:%+v status:%v, error:%v",
+								jobs[i].Jid, status, err)
 						} else {
 							log.Println("retry complete job ", jobs[i].Jid, "ok")
 						}
 						return errors.New("restart")
+					} else {
+						if status != "complete" {
+							log.Printf("job:%+v status:%v", jobs[i].Jid, status)
+						}
 					}
 				}
 			}

@@ -10,6 +10,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -22,29 +23,40 @@ type JobFunc func(*Job) error
 type JobCallback func(*Job) error
 
 type Worker struct {
+	sync.Mutex
 	Interval int // in time.Duration
 
-	funcs map[string]JobFunc
-	queue *Queue
-	// events *Events
+	funcs     map[string]JobFunc
+	queue     *Queue
+	queueAddr string
+	queueName string
 
 	cli *Client
 }
 
-func NewWorker(cli *Client, queueName string, interval int) *Worker {
+func NewWorker(queueAddr string, queueName string, interval int) (*Worker, error) {
+	ipport := strings.Split(queueAddr, ":")
+	client, err := Dial(ipport[0], ipport[1])
+	if err != nil {
+		log.Println("Dial err:", err)
+		return nil, errors.New(err.Error())
+	}
+
 	w := &Worker{
 		Interval: interval,
 		funcs:    make(map[string]JobFunc),
 		// events: c.Events(),
-		cli: cli,
+		cli:       client,
+		queueName: queueName,
+		queueAddr: queueAddr,
 	}
 
-	w.queue = cli.Queue(queueName)
+	w.queue = w.cli.Queue(queueName)
 
-	return w
+	return w, nil
 }
 
-func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mutex) {
+func heartbeatStart(job *Job, done chan bool, heartbeat int, l sync.Locker) {
 	tick := time.NewTicker(time.Duration(heartbeat) * time.Duration(time.Second))
 	for {
 		select {
@@ -52,9 +64,9 @@ func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mut
 			tick.Stop()
 			return
 		case <-tick.C:
-			clientLock.Lock()
+			l.Lock()
 			success, err := job.Heartbeat()
-			clientLock.Unlock()
+			l.Unlock()
 			if err != nil {
 				log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v, success:%v, error:%v",
 					job.Jid, job.Queue, success, err)
@@ -66,9 +78,38 @@ func heartbeatStart(job *Job, done chan bool, heartbeat int, clientLock sync.Mut
 	}
 }
 
+//try our best to complete the job
+func (w *Worker) tryCompleteJob(job *Job) error {
+	for i := 0; i < 3; i++ {
+		time.Sleep(time.Second)
+		log.Println("tryCompleteJob", job.Jid)
+		ipport := strings.Split(w.queueAddr, ":")
+		client, err := Dial(ipport[0], ipport[1])
+		if err != nil {
+			log.Println("Dial err:", err)
+			continue
+		}
+
+		job.SetClient(client)
+		if _, err := job.CompleteWithNoData(); err != nil {
+			client.Close()
+			log.Println("tryCompleteJob", job.Jid, err)
+		} else {
+			client.Close()
+			return nil
+		}
+	}
+
+	return errors.New("tryCompleteJob " + job.Jid + "failed")
+}
+
 func (w *Worker) Start() error {
 	// log.Println("worker Start")
-	var clientLock sync.Mutex
+
+	defer func() {
+		w.cli.Close()
+		w.cli = nil
+	}()
 
 	heartbeatStr, err := w.cli.GetConfig("heartbeat")
 	heartbeat, err := strconv.Atoi(heartbeatStr)
@@ -82,9 +123,9 @@ func (w *Worker) Start() error {
 
 	err = func(q *Queue) error {
 		for {
-			clientLock.Lock()
+			w.Lock()
 			jobs, err := q.Pop(1) //we may pop more if fast enough
-			clientLock.Unlock()
+			w.Unlock()
 
 			if err != nil {
 				log.Println(err)
@@ -102,7 +143,7 @@ func (w *Worker) Start() error {
 				}
 				done := make(chan bool)
 				//todo: using seprate connection to send heartbeat
-				go heartbeatStart(jobs[i], done, heartbeat, clientLock)
+				go heartbeatStart(jobs[i], done, heartbeat, w)
 				f, ok := w.funcs[jobs[i].Klass]
 				if !ok { //we got a job that not belongs to us
 					done <- false
@@ -114,9 +155,9 @@ func (w *Worker) Start() error {
 				if err != nil {
 					// TODO: probably do something with this
 					log.Println("error: job failed, id", jobs[i].Jid, "queue", jobs[i].Queue, err.Error())
-					clientLock.Lock()
+					w.Lock()
 					success, err := jobs[i].Fail("fail", err.Error())
-					clientLock.Unlock()
+					w.Unlock()
 					done <- false
 					if err != nil {
 						log.Printf("fail job:%+v success:%v, error:%v",
@@ -124,16 +165,20 @@ func (w *Worker) Start() error {
 						return err
 					}
 				} else {
-					clientLock.Lock()
+					w.Lock()
 					success, err := jobs[i].CompleteWithNoData()
-					clientLock.Unlock()
+					w.Unlock()
 					done <- true
 					if err != nil {
-						log.Printf("complete job:%+v success:%v, error:%v",
-							jobs[i].Jid, success, err)
-						return err
+						err = w.tryCompleteJob(jobs[i])
+						if err != nil {
+							log.Printf("fail job:%+v success:%v, error:%v",
+								jobs[i].Jid, success, err)
+						} else {
+							log.Println("retry complete job ", jobs[i].Jid, "ok")
+						}
+						return errors.New("restart")
 					}
-					//log.Printf("===job:%+v", jobs[0])
 				}
 			}
 		}

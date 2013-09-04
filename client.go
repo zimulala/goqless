@@ -42,7 +42,7 @@ func Dial(host, port string) (*Client, error) {
 		return nil, err
 	}
 	//println(dir + "/qless-core")
-	err = c.lua.LoadScripts(dir + "/qless-core") // make get from lib path
+	err = c.lua.LoadScripts(dir + "/qless-core-master") // make get from lib path
 	if err != nil {
 		println(err.Error())
 		conn.Close()
@@ -77,12 +77,12 @@ func (c *Client) Queue(name string) *Queue {
 
 // Queues(0, now, [queue])
 func (c *Client) Queues(name string) ([]*Queue, error) {
-	args := []interface{}{0, timestamp()}
+	args := []interface{}{0, "queues", timestamp()}
 	if name != "" {
 		args = append(args, name)
 	}
 
-	byts, err := redis.Bytes(c.Do("queues", args...))
+	byts, err := redis.Bytes(c.Do("qless", args...))
 	if err != nil {
 		return nil, err
 	}
@@ -104,22 +104,20 @@ func (c *Client) Queues(name string) ([]*Queue, error) {
 	return qr, err
 }
 
-// Track(0, 'track', jid, now, tag, ...)
 // Track the jid
 func (c *Client) Track(jid string) (bool, error) {
-	return Bool(c.Do("track", 0, "track", jid, timestamp(), ""))
+	return Bool(c.Do("qless", 0, "track", timestamp(), "track", jid, ""))
 }
 
-// Track(0, 'untrack', jid, now)
 // Untrack the jid
 func (c *Client) Untrack(jid string) (bool, error) {
-	return Bool(c.Do("track", 0, "untrack", jid, timestamp()))
+	return Bool(c.Do("qless", 0, "track", timestamp(), 0, "untrack", jid))
 }
 
 // Track(0)
 // Returns all the tracked jobs
 func (c *Client) Tracked() (string, error) {
-	return redis.String(c.Do("track", 0))
+	return redis.String(c.Do("qless", 0, "track", timestamp()))
 }
 
 func (c *Client) Get(jid string) (interface{}, error) {
@@ -132,7 +130,7 @@ func (c *Client) Get(jid string) (interface{}, error) {
 }
 
 func (c *Client) GetJob(jid string) (*Job, error) {
-	byts, err := redis.Bytes(c.Do("get", 0, jid))
+	byts, err := redis.Bytes(c.Do("qless", 0, "get", timestamp(), jid))
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +144,7 @@ func (c *Client) GetJob(jid string) (*Job, error) {
 }
 
 func (c *Client) GetRecurringJob(jid string) (*RecurringJob, error) {
-	byts, err := redis.Bytes(c.Do("recur", 0, "get", jid))
+	byts, err := redis.Bytes(c.Do("qless", 0, "recur", timestamp(), "get", jid))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +158,7 @@ func (c *Client) GetRecurringJob(jid string) (*RecurringJob, error) {
 }
 
 func (c *Client) Completed(start, count int) ([]string, error) {
-	reply, err := redis.Values(c.Do("jobs", 0, "complete"))
+	reply, err := redis.Values(c.Do("qless", 0, "jobs", timestamp(), "complete"))
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +174,7 @@ func (c *Client) Completed(start, count int) ([]string, error) {
 }
 
 func (c *Client) Tagged(tag string, start, count int) (*TaggedReply, error) {
-	byts, err := redis.Bytes(c.Do("tag", 0, "get", tag, start, count))
+	byts, err := redis.Bytes(c.Do("qless", 0, "tag", timestamp(), "get", tag, start, count))
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +191,7 @@ func (c *Client) Tagged(tag string, start, count int) (*TaggedReply, error) {
 
 // config(0, 'get', [option])
 func (c *Client) GetConfig(option string) (string, error) {
-
-	interf, err := c.Do("config", 0, "get", option)
+	interf, err := c.Do("qless", 0, "config.get", timestamp(), option)
 	if err != nil {
 		return "", err
 	}
@@ -221,7 +218,7 @@ func (c *Client) GetConfig(option string) (string, error) {
 
 // config(0, 'set', option, value)
 func (c *Client) SetConfig(option string, value interface{}) {
-	intf, err := c.Do("config", 0, "set", option, value)
+	intf, err := c.Do("qless", 0, "config.set", timestamp(), option, value)
 	if err != nil {
 		fmt.Println("setconfig, c.Do fail. interface:", intf, " err:", err)
 	}
@@ -229,5 +226,5 @@ func (c *Client) SetConfig(option string, value interface{}) {
 
 // config(0, 'unset', [option])
 func (c *Client) UnsetConfig(option string) {
-	c.Do("unset", option)
+	c.Do("qless", 0, "config.unset", timestamp(), option)
 }

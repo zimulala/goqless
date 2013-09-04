@@ -30,7 +30,7 @@ func (q *Queue) SetClient(cli *Client) {
 
 // Jobs(0, ('stalled' | 'running' | 'scheduled' | 'depends' | 'recurring'), now, queue, [offset, [count]])
 func (q *Queue) Jobs(state string, start, count int) ([]string, error) {
-	reply, err := redis.Values(q.cli.Do("jobs", 0, state, timestamp(), q.Name))
+	reply, err := redis.Values(q.cli.Do("qless", 0, "jobs", timestamp(), state, q.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -65,15 +65,14 @@ func (q *Queue) CancelAll() {
 
 // Pause(0, name)
 func (q *Queue) Pause() {
-	q.cli.Do("pause", 0, q.Name)
+	q.cli.Do("qless", 0, "pause", timestamp(), q.Name)
 }
 
 // Unpause(0, name)
 func (q *Queue) Unpause() {
-	q.cli.Do("unpause", 0, q.Name)
+	q.cli.Do("qless", 0, "unpause", timestamp(), q.Name)
 }
 
-// Put(1, queue, jid, klass, data, now, delay, [priority, p], [tags, t], [retries, r], [depends, '[...]'])
 // Puts a job into the queue
 // returns jid, error
 func (q *Queue) Put(jid, klass string, data interface{}, delay, priority int, tags []string, retries int, depends []string) (string, error) {
@@ -91,40 +90,44 @@ func (q *Queue) Put(jid, klass string, data interface{}, delay, priority int, ta
 	}
 
 	return redis.String(q.cli.Do(
-		"put", 1, q.Name, jid, klass,
-		marshal(data), timestamp(),
+		"qless", 0, "put", timestamp(), q.Name, jid, klass,
+		marshal(data),
 		delay, "priority", priority,
 		"tags", marshal(tags), "retries",
 		retries, "depends", marshal(depends)))
 }
 
-// Pop(1, queue, worker, count, now)
 // Pops a job off the queue.
 func (q *Queue) Pop(count int) ([]*Job, error) {
 	if count == 0 {
 		count = 1
 	}
 
-	reply, err := redis.Values(q.cli.Do("pop", 1, q.Name, workerName(), count, timestamp()))
+	reply, err := redis.Bytes(q.cli.Do("qless", 0, "pop", timestamp(), q.Name, workerName(), count))
 	if err != nil {
 		return nil, err
 	}
 
+	//"{}"
+	if len(reply) == 2 {
+		return nil, nil
+	}
+
+	//println(string(reply))
+
 	var jobs []*Job
-	for _, val := range reply {
-		job := NewJob(q.cli)
-		bs, _ := redis.Bytes(val, err)
-		err := json.Unmarshal(bs, job)
-		if err != nil {
-			return nil, err
-		}
-		jobs = append(jobs, job)
+	err = json.Unmarshal(reply, &jobs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range jobs {
+		v.cli = q.cli
 	}
 
 	return jobs, nil
 }
 
-// Recur(0, 'on', queue, jid, klass, data, now, 'interval', second, offset, [priority p], [tags t], [retries r])
 // Put a recurring job in this queue
 func (q *Queue) Recur(jid, klass string, data interface{}, interval, offset, priority int, tags []string, retries int) (string, error) {
 	if jid == "" {
@@ -144,8 +147,8 @@ func (q *Queue) Recur(jid, klass string, data interface{}, interval, offset, pri
 	}
 
 	return redis.String(q.cli.Do(
-		"recur", 0, "on", q.Name, jid, klass,
-		data, timestamp(), "interval",
+		"qless", 0, "recur", timestamp(), "on", q.Name, jid, klass,
+		data, "interval",
 		interval, offset, "priority", priority,
 		"tags", marshal(tags), "retries", retries))
 }

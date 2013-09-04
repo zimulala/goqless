@@ -65,13 +65,13 @@ func heartbeatStart(job *Job, done chan bool, heartbeat int, l sync.Locker) {
 			return
 		case <-tick.C:
 			l.Lock()
-			success, err := job.Heartbeat()
+			success, err := job.HeartbeatWithNoData()
 			l.Unlock()
 			if err != nil {
-				log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v, success:%v, error:%v",
+				log.Printf("failed HeartbeatWithNoData jid:%v, queue:%v, success:%v, error:%v",
 					job.Jid, job.Queue, success, err)
 			} else {
-				log.Printf("warning, slow, send heartbeat***jid:%v, queue:%v, success:%v",
+				log.Printf("warning, slow, HeartbeatWithNoData jid:%v, queue:%v, success:%v",
 					job.Jid, job.Queue, success)
 			}
 		}
@@ -113,7 +113,7 @@ func (w *Worker) Start() error {
 
 	heartbeatStr, err := w.cli.GetConfig("heartbeat")
 	heartbeat, err := strconv.Atoi(heartbeatStr)
-	//log.Println("heartbeatStr:", heartbeat)
+	log.Println("heartbeatStr:", heartbeat)
 	if err != nil {
 		heartbeat = 60
 		log.Println(err)
@@ -147,7 +147,7 @@ func (w *Worker) Start() error {
 				f, ok := w.funcs[jobs[i].Klass]
 				if !ok { //we got a job that not belongs to us
 					done <- false
-					log.Fatalln("got a message not belongs to us, queue", q.Name, jobs[i])
+					log.Fatalf("got a message not belongs to us, queue %v, job %+v\n", q.Name, jobs[i])
 					continue
 				}
 

@@ -42,7 +42,7 @@ func Dial(host, port string) (*Client, error) {
 		return nil, err
 	}
 	//println(dir + "/qless-core")
-	err = c.lua.LoadScripts(dir + "/qless-core-master") // make get from lib path
+	err = c.lua.LoadScripts(dir + "/qless-core") // make get from lib path
 	if err != nil {
 		println(err.Error())
 		conn.Close()

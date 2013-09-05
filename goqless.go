@@ -3,8 +3,8 @@ package goqless
 
 import (
 	"bytes"
+	"crypto/md5"
 	"crypto/rand"
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
@@ -77,7 +77,7 @@ func (s *StringSlice) UnmarshalJSON(data []byte) error {
 
 // Generates a jid
 func generateJID() string {
-	hasher := sha1.New()
+	hasher := md5.New()
 	uuid := make([]byte, 16)
 	n, err := rand.Read(uuid)
 	if err != nil || n != len(uuid) {
@@ -89,7 +89,7 @@ func generateJID() string {
 	}
 
 	hasher.Write([]byte(workerNameStr))
-	hasher.Write([]byte(uuid))
+	hasher.Write(uuid)
 	hasher.Write([]byte(time.Now().String()))
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }

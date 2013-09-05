@@ -75,7 +75,6 @@ func (c *Client) Queue(name string) *Queue {
 	return q
 }
 
-// Queues(0, now, [queue])
 func (c *Client) Queues(name string) ([]*Queue, error) {
 	args := []interface{}{0, "queues", timestamp()}
 	if name != "" {
@@ -114,7 +113,6 @@ func (c *Client) Untrack(jid string) (bool, error) {
 	return Bool(c.Do("qless", 0, "track", timestamp(), 0, "untrack", jid))
 }
 
-// Track(0)
 // Returns all the tracked jobs
 func (c *Client) Tracked() (string, error) {
 	return redis.String(c.Do("qless", 0, "track", timestamp()))
@@ -163,8 +161,6 @@ func (c *Client) Completed(start, count int) ([]string, error) {
 		return nil, err
 	}
 
-	// fmt.Println(reply)
-
 	ret := []string{}
 	for _, val := range reply {
 		s, _ := redis.String(val, err)
@@ -184,12 +180,6 @@ func (c *Client) Tagged(tag string, start, count int) (*TaggedReply, error) {
 	return t, err
 }
 
-// // returns all the failed jobs
-// func (c *Client) Failed(group string, start, limit int) ([]*Job, error) {
-// c.Do("failed", 0,
-// }
-
-// config(0, 'get', [option])
 func (c *Client) GetConfig(option string) (string, error) {
 	interf, err := c.Do("qless", 0, "config.get", timestamp(), option)
 	if err != nil {
@@ -216,7 +206,6 @@ func (c *Client) GetConfig(option string) (string, error) {
 	return contentStr, err
 }
 
-// config(0, 'set', option, value)
 func (c *Client) SetConfig(option string, value interface{}) {
 	intf, err := c.Do("qless", 0, "config.set", timestamp(), option, value)
 	if err != nil {
@@ -224,7 +213,6 @@ func (c *Client) SetConfig(option string, value interface{}) {
 	}
 }
 
-// config(0, 'unset', [option])
 func (c *Client) UnsetConfig(option string) {
 	c.Do("qless", 0, "config.unset", timestamp(), option)
 }

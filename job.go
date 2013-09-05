@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-	// "encoding/json"
 )
 
 var (
@@ -73,94 +72,73 @@ func (j *Job) SetClient(cli *Client) {
 
 // Move this from it's current queue into another
 func (j *Job) Move(queueName string) (string, error) {
-	now := timestamp()
-	return redis.String(j.cli.Do("qless", 0, "put", now, queueName, j.Jid, j.Klass, marshal(j.Data), now, 0))
+	return redis.String(j.cli.Do("qless", 0, "put", timestamp(), queueName, j.Jid, j.Klass, marshal(j.Data), 0))
 }
 
-// Fail(0, id, worker, type, message, now, [data])
 // Fail this job
 // return success, error
 func (j *Job) Fail(typ, message string) (bool, error) {
-	now := timestamp()
-	return Bool(j.cli.Do("qless", 0, "fail", now, j.Jid, j.Worker, typ, message, now, marshal(j.Data)))
+	return Bool(j.cli.Do("qless", 0, "fail", timestamp(), j.Jid, j.Worker, typ, message, marshal(j.Data)))
 }
 
-// Heartbeat(0, id, worker, now, [data])
 // Heartbeats this job
 // return success, error
 func (j *Job) Heartbeat() (bool, error) {
-	now := timestamp()
-	return Bool(j.cli.Do("qless", 0, "heartbeat", now, j.Jid, j.Worker, now, marshal(j.Data)))
+	return Bool(j.cli.Do("qless", 0, "heartbeat", timestamp(), j.Jid, j.Worker, marshal(j.Data)))
 }
 
-// Complete(0, jid, worker, queue, now, data, ['next', n, [('delay', d) | ('depends', '["jid1","jid2",...]')])
 // Completes this job
 // returns state, error
 func (j *Job) Complete() (string, error) {
-	now := timestamp()
-	return redis.String(j.cli.Do("qless", 0, "complete", now, j.Jid, j.Worker, j.Queue, now, marshal(j.Data)))
+	return redis.String(j.cli.Do("qless", 0, "complete", timestamp(), j.Jid, j.Worker, j.Queue, marshal(j.Data)))
 }
 
 //for big job, save memory in redis
 func (j *Job) CompleteWithNoData() (string, error) {
-	now := timestamp()
-	return redis.String(j.cli.Do("qless", 0, "complete", now, j.Jid, j.Worker, j.Queue, now, finishBytes))
+	return redis.String(j.cli.Do("qless", 0, "complete", timestamp(), j.Jid, j.Worker, j.Queue, finishBytes))
 }
 
 func (j *Job) HeartbeatWithNoData() (bool, error) {
-	now := timestamp()
-	return Bool(j.cli.Do("qless", 0, "heartbeat", now, j.Jid, j.Worker, now))
+	return Bool(j.cli.Do("qless", 0, "heartbeat", timestamp(), j.Jid, j.Worker))
 }
 
-// Cancel(0, id)
 // Cancels this job
 func (j *Job) Cancel() {
 	j.cli.Do("qless", 0, "cancel", timestamp(), j.Jid)
 }
 
-// Track(0, 'track', jid, now, tag, ...)
 // Track this job
 func (j *Job) Track() (bool, error) {
-	now := timestamp()
-	return Bool(j.cli.Do("qless", 0, "track", now, "track", j.Jid, now, ""))
+	return Bool(j.cli.Do("qless", 0, "track", timestamp(), "track", j.Jid))
 }
 
-// Track(0, 'untrack', jid, now)
 // Untrack this job
 func (j *Job) Untrack() (bool, error) {
-	now := timestamp()
-	return Bool(j.cli.Do("qless", 0, "track", now, "untrack", j.Jid, now))
+	return Bool(j.cli.Do("qless", 0, "track", timestamp(), "untrack", j.Jid))
 }
 
-// Tag(0, 'add', jid, now, tag, [tag, ...])
 func (j *Job) Tag(tags ...interface{}) (string, error) {
-	now := timestamp()
-	args := []interface{}{0, "tag", now, "add", j.Jid, now}
+	args := []interface{}{0, "tag", timestamp(), "add", j.Jid}
 	args = append(args, tags...)
 	return redis.String(j.cli.Do("qless", args...))
 }
 
-// Tag(0, 'remove', jid, now, tag, [tag, ...])
 func (j *Job) Untag(tags ...interface{}) (string, error) {
-	now := timestamp()
-	args := []interface{}{0, "tag", now, "remove", j.Jid, now}
+	args := []interface{}{0, "tag", timestamp(), "remove", j.Jid}
 	args = append(args, tags...)
 	return redis.String(j.cli.Do("qless", args...))
 }
 
-// Retry(0, jid, queue, worker, now, [delay])
 func (j *Job) Retry(delay int) (int, error) {
 	return redis.Int(j.cli.Do("qless", 0, "retry", timestamp(), j.Jid, j.Queue, j.Worker, delay))
 }
 
-// Depends(0, jid, 'on', [jid, [jid, [...]]])
 func (j *Job) Depend(jids ...interface{}) (string, error) {
 	args := []interface{}{0, "depends", timestamp(), j.Jid, "on"}
 	args = append(args, jids...)
 	return redis.String(j.cli.Do("qless", args...))
 }
 
-// Depends(0, jid, 'off', ('all' | [jid, [jid, [...]]]))
 func (j *Job) Undepend(jids ...interface{}) (string, error) {
 	args := []interface{}{0, "depends", timestamp(), j.Jid, "off"}
 	args = append(args, jids...)

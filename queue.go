@@ -28,7 +28,6 @@ func (q *Queue) SetClient(cli *Client) {
 	q.cli = cli
 }
 
-// Jobs(0, ('stalled' | 'running' | 'scheduled' | 'depends' | 'recurring'), now, queue, [offset, [count]])
 func (q *Queue) Jobs(state string, start, count int) ([]string, error) {
 	reply, err := redis.Values(q.cli.Do("qless", 0, "jobs", timestamp(), state, q.Name))
 	if err != nil {
@@ -63,12 +62,10 @@ func (q *Queue) CancelAll() {
 	}
 }
 
-// Pause(0, name)
 func (q *Queue) Pause() {
 	q.cli.Do("qless", 0, "pause", timestamp(), q.Name)
 }
 
-// Unpause(0, name)
 func (q *Queue) Unpause() {
 	q.cli.Do("qless", 0, "unpause", timestamp(), q.Name)
 }

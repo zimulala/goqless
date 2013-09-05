@@ -3,10 +3,8 @@
 package goqless
 
 import (
-	// "encoding/json"
-	"fmt"
-	// "github.com/garyburd/redigo/redis"
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"strconv"

@@ -152,7 +152,7 @@ func (w *Worker) Start() error {
 				err := f(jobs[i])
 				if err != nil {
 					// TODO: probably do something with this
-					log.Println("error: job failed, id", jobs[i].Jid, "queue", jobs[i].Queue, err.Error())
+					log.Println("error: job failed, jid", jobs[i].Jid, "queue", jobs[i].Queue, err.Error())
 					w.Lock()
 					success, err := jobs[i].Fail("fail", err.Error())
 					w.Unlock()

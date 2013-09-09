@@ -102,8 +102,6 @@ func (w *Worker) tryCompleteJob(job *Job) error {
 }
 
 func (w *Worker) Start() error {
-	// log.Println("worker Start")
-
 	defer func() {
 		w.cli.Close()
 		w.cli = nil
@@ -111,7 +109,6 @@ func (w *Worker) Start() error {
 
 	heartbeatStr, err := w.cli.GetConfig("heartbeat")
 	heartbeat, err := strconv.Atoi(heartbeatStr)
-	log.Println("heartbeatStr:", heartbeat)
 	if err != nil {
 		heartbeat = 60
 		log.Println(err)

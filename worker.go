@@ -98,7 +98,7 @@ func (w *Worker) tryCompleteJob(job *Job) error {
 		}
 	}
 
-	return errors.New("tryCompleteJob " + job.Jid + "failed")
+	return errors.New("tryCompleteJob " + job.Jid + " failed")
 }
 
 func (w *Worker) Start() error {

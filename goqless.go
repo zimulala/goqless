@@ -10,7 +10,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	mrand "math/rand"
 	"os"
-	"osext"
+	"bitbucket.org/kardianos/osext"
 	"strconv"
 	"strings"
 	"time"
